@@ -17,6 +17,10 @@ contract Staker {
   mapping(address => uint256) public balances;
   mapping(address => uint256) public depositTimestamps;
 
+// Public Variables
+// The reward rate sets the interest rate for the disbursement of ETH on the principal amount staked.
+// The withdrawal and claim deadlines help us set deadlines for the staking mechanics to begin/end.
+
   uint256 public constant rewardRatePerSecond = 0.1 ether;
   uint256 public withdrawalDeadline = block.timestamp + 120 seconds;
   uint256 public claimDeadline = block.timestamp + 240 seconds;
