@@ -26,6 +26,11 @@ contract Staker {
   uint256 public claimDeadline = block.timestamp + 240 seconds;
   uint256 public currentBlock = 0;
 
+  // Events
+  //  emit them in key parts of our contract to ensure that we maintain best programming practices.
+  event Stake(address indexed sender, uint256 amount);
+  event Received(address, uint);
+  event Execute(address indexed sender, uint256 amount);
     constructor(address exampleExternalContractAddress) {
         exampleExternalContract = ExampleExternalContract(
             exampleExternalContractAddress
