@@ -67,6 +67,9 @@
     ]
   },
   "dependencies": {
-    "caniuse-lite": "^1.0.30001379"
+    "@walletconnect/web3-provider": "^1.8.0",
+    "caniuse-lite": "^1.0.30001379",
+    "react-app-rewired": "^2.2.1",
+    "web3": "^1.7.5"
   }
 }
