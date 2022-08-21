@@ -32,6 +32,39 @@ contract Staker {
     event Received(address, uint256);
     event Execute(address indexed sender, uint256 amount);
 
+    // Modifiers
+    //     Solidity modifiers are pieces of code that can run before and/or after a function call.
+
+    // While they have many different purposes, one of the most common and basic use cases is for restricting access to certain functions if particular conditions are not fully met.
+    /*
+  Checks if the withdrawal period has been reached or not
+  */
+    modifier withdrawalDeadlineReached(bool requireReached) {
+        uint256 timeRemaining = withdrawalTimeLeft();
+        if (requireReached) {
+            require(timeRemaining == 0, "Withdrawal period is not reached yet");
+        } else {
+            require(timeRemaining > 0, "Withdrawal period has been reached");
+        }
+        _;
+    }
+
+    modifier claimDeadlineReached(bool requireReached) {
+        uint256 timeRemaining = claimPeriodLeft();
+        if (requireReached) {
+            require(timeRemaining == 0, "Claim deadline is not reached yet");
+        } else {
+            require(timeRemaining > 0, "Claim deadline has been reached");
+        }
+        _;
+    }
+
+    modifier notCompleted() {
+        bool completed = exampleExternalContract.completed();
+        require(!completed, "Stake already completed!");
+        _;
+    }
+
     // READ ONLY Time Functions
     // The conditional simply checks whether the current time is greater than or less than the deadlines dictated in the public variables section.
     // If the current time is greater than the pre-arranged deadlines, we know that the deadline has passed and we return 0 to signify that a "state change" has occurred.
