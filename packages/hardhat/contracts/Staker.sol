@@ -39,6 +39,12 @@ contract Staker {
     /*
   Checks if the withdrawal period has been reached or not
   */
+
+    //   The modifiers withdrawalDeadlineReached(bool requireReached) & claimDeadlineReached(bool requireReached) both accept a boolean parameter and check to ensure that their respective deadlines are either true or false.
+
+    // The modifier notCompleted() operates in a similar fashion but is actually a little bit more complex in nature even though it contains fewer lines of code.
+
+    // It actually calls on a function completed() from an external contract outside of Staker and checks to see if it's returning true or false to confirm if that flag has been switched.
     modifier withdrawalDeadlineReached(bool requireReached) {
         uint256 timeRemaining = withdrawalTimeLeft();
         if (requireReached) {
