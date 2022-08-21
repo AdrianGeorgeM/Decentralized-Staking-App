@@ -7,19 +7,8 @@ import "./ExampleExternalContract.sol";
 contract Staker {
     ExampleExternalContract public exampleExternalContract;
 
-    //Mappings
-    // Solidity Mappingss
-    // In our smart contract, I'll need two mappings to help us store some data.
-    // In particular, I need something to keep track of:
-    //     how much ETH is deposited into the contract
-    //     the time that the deposit happened
-
     mapping(address => uint256) public balances;
     mapping(address => uint256) public depositTimestamps;
-
-    // Public Variables
-    // The reward rate sets the interest rate for the disbursement of ETH on the principal amount staked.
-    // The withdrawal and claim deadlines help us set deadlines for the staking mechanics to begin/end.
 
     uint256 public constant rewardRatePerSecond = 0.1 ether;
     uint256 public withdrawalDeadline = block.timestamp + 120 seconds;
@@ -27,24 +16,14 @@ contract Staker {
     uint256 public currentBlock = 0;
 
     // Events
-    //  emit them in key parts of our contract to ensure that I maintain best programming practices.
     event Stake(address indexed sender, uint256 amount);
     event Received(address, uint256);
     event Execute(address indexed sender, uint256 amount);
 
     // Modifiers
-    //     Solidity modifiers are pieces of code that can run before and/or after a function call.
-
-    // While they have many different purposes, one of the most common and basic use cases is for restricting access to certain functions if particular conditions are not fully met.
     /*
   Checks if the withdrawal period has been reached or not
   */
-
-    //   The modifiers withdrawalDeadlineReached(bool requireReached) & claimDeadlineReached(bool requireReached) both accept a boolean parameter and check to ensure that their respective deadlines are either true or false.
-
-    // The modifier notCompleted() operates in a similar fashion but is actually a little bit more complex in nature even though it contains feIr lines of code.
-
-    // It actually calls on a function completed() from an external contract outside of Staker and checks to see if it's returning true or false to confirm if that flag has been switched.
     modifier withdrawalDeadlineReached(bool requireReached) {
         uint256 timeRemaining = withdrawalTimeLeft();
         if (requireReached) {
@@ -55,6 +34,9 @@ contract Staker {
         _;
     }
 
+    /*
+  Checks if the claim period has ended or not
+  */
     modifier claimDeadlineReached(bool requireReached) {
         uint256 timeRemaining = claimPeriodLeft();
         if (requireReached) {
@@ -65,16 +47,66 @@ contract Staker {
         _;
     }
 
+    /*
+  Requires that the contract only be completed once!
+  */
     modifier notCompleted() {
         bool completed = exampleExternalContract.completed();
         require(!completed, "Stake already completed!");
         _;
     }
 
-    // READ ONLY Time Functions
-    // The conditional simply checks whether the current time is greater than or less than the deadlines dictated in the public variables section.
-    // If the current time is greater than the pre-arranged deadlines, I know that the deadline has passed and I return 0 to signify that a "state change" has occurred.
-    // Otherwise, I simply return the remaining time before the deadline is reached.
+    constructor(address exampleExternalContractAddress) {
+        exampleExternalContract = ExampleExternalContract(
+            exampleExternalContractAddress
+        );
+    }
+
+    // Stake function for a user to stake ETH in our contract
+    function stake()
+        public
+        payable
+        withdrawalDeadlineReached(false)
+        claimDeadlineReached(false)
+    {
+        balances[msg.sender] = balances[msg.sender] + msg.value;
+        depositTimestamps[msg.sender] = block.timestamp;
+        emit Stake(msg.sender, msg.value);
+    }
+
+    /*
+  Withdraw function for a user to remove their staked ETH inclusive
+  of both principal and any accrued interest
+  */
+    function withdraw()
+        public
+        withdrawalDeadlineReached(true)
+        claimDeadlineReached(false)
+        notCompleted
+    {
+        require(balances[msg.sender] > 0, "You have no balance to withdraw!");
+        uint256 individualBalance = balances[msg.sender];
+        uint256 indBalanceRewards = individualBalance +
+            ((block.timestamp - depositTimestamps[msg.sender]) *
+                rewardRatePerBlock);
+        balances[msg.sender] = 0;
+
+        // Transfer all ETH via call! (not transfer) cc: https://solidity-by-example.org/sending-ether
+        (bool sent, bytes memory data) = msg.sender.call{
+            value: indBalanceRewards
+        }("");
+        require(sent, "RIP; withdrawal failed :( ");
+    }
+
+    /*
+  Allows any user to repatriate "unproductive" funds that are left in the staking contract
+  past the defined withdrawal period
+  */
+    function execute() public claimDeadlineReached(true) notCompleted {
+        uint256 contractBalance = address(this).balance;
+        exampleExternalContract.complete{value: address(this).balance}();
+    }
+
     /*
   READ-ONLY function to calculate the time remaining before the minimum staking period has passed
   */
@@ -101,60 +133,18 @@ contract Staker {
         }
     }
 
-    constructor(address exampleExternalContractAddress) {
-        exampleExternalContract = ExampleExternalContract(
-            exampleExternalContractAddress
-        );
-    }
-
-    // Depositing/Staking Function
-    // Stake function for a user to stake ETH in our contract
-    // use the modifiers created earlier by setting the params within withdrawalDeadlineReached() to be false and claimDeadlineReached() to be false since I don't want either deadline to have passed yet.
-    //The rest of the function is fairly standard in a typical "deposit" scenario where our balance mapping is updated to include the money sent in.
-
-    // I also set our deposit timestamp with the current time of the deposit so that I access that stored value for interest calculations later.
-    function stake()
-        public
-        payable
-        withdrawalDeadlineReached(false)
-        claimDeadlineReached(false)
-    {
-        balances[msg.sender] = balances[msg.sender] + msg.value;
-        depositTimestamps[msg.sender] = block.timestamp;
-        emit Stake(msg.sender, msg.value);
+    /*
+  Time to "kill-time" on our local testnet
+  */
+    function killTime() public {
+        currentBlock = block.timestamp;
     }
 
     /*
-  Withdraw function for a user to remove their staked ETH inclusive
-  of both the principle balance and any accrued interest
+  \Function for our smart contract to receive ETH
+  cc: https://docs.soliditylang.org/en/latest/contracts.html#receive-ether-function
   */
-    //Again I useD the modifiers created earlier but this time we wantwithdrawalDeadlineReached() to be true and claimDeadlineReached() to be false.
-
-    // This set of modifiers/parameters means that  are in the sweet spot for the withdrawal window since its time for the withdrawal to take place without any penalties and get interest as well.
-    // The rest of the function does a few important steps.
-
-    //     It checks to ensure that the person trying to withdraw ETH actually has a non-zero stake.
-    //     It calculates the amount of ETH owed in interest by taking the number of blocks that passed from deposit to withdrawal and multiplying that by our interest constant.
-    //     It sets the user's balance staked ETH to 0 so that no double counting can occur.
-    //     It transfers the ETH from the smart contract back to the user's wallet.
-
-    function withdraw()
-        public
-        withdrawalDeadlineReached(true)
-        claimDeadlineReached(false)
-        notCompleted
-    {
-        require(balances[msg.sender] > 0, "You have no balance to withdraw!");
-        uint256 individualBalance = balances[msg.sender];
-        uint256 indBalanceRewards = individualBalance +
-            ((block.timestamp - depositTimestamps[msg.sender]) *
-                rewardRatePerBlock);
-        balances[msg.sender] = 0;
-
-        // Transfer all ETH via call! (not transfer) cc: https://solidity-by-example.org/sending-ether
-        (bool sent, bytes memory data) = msg.sender.call{
-            value: indBalanceRewards
-        }("");
-        require(sent, "RIP; withdrawal failed :( ");
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
     }
 }
