@@ -123,4 +123,38 @@ contract Staker {
         depositTimestamps[msg.sender] = block.timestamp;
         emit Stake(msg.sender, msg.value);
     }
+
+    /*
+  Withdraw function for a user to remove their staked ETH inclusive
+  of both the principle balance and any accrued interest
+  */
+    //Again I useD the modifiers created earlier but this time we wantwithdrawalDeadlineReached() to be true and claimDeadlineReached() to be false.
+
+    // This set of modifiers/parameters means that  are in the sweet spot for the withdrawal window since its time for the withdrawal to take place without any penalties and get interest as well.
+    // The rest of the function does a few important steps.
+
+    //     It checks to ensure that the person trying to withdraw ETH actually has a non-zero stake.
+    //     It calculates the amount of ETH owed in interest by taking the number of blocks that passed from deposit to withdrawal and multiplying that by our interest constant.
+    //     It sets the user's balance staked ETH to 0 so that no double counting can occur.
+    //     It transfers the ETH from the smart contract back to the user's wallet.
+
+    function withdraw()
+        public
+        withdrawalDeadlineReached(true)
+        claimDeadlineReached(false)
+        notCompleted
+    {
+        require(balances[msg.sender] > 0, "You have no balance to withdraw!");
+        uint256 individualBalance = balances[msg.sender];
+        uint256 indBalanceRewards = individualBalance +
+            ((block.timestamp - depositTimestamps[msg.sender]) *
+                rewardRatePerBlock);
+        balances[msg.sender] = 0;
+
+        // Transfer all ETH via call! (not transfer) cc: https://solidity-by-example.org/sending-ether
+        (bool sent, bytes memory data) = msg.sender.call{
+            value: indBalanceRewards
+        }("");
+        require(sent, "RIP; withdrawal failed :( ");
+    }
 }
