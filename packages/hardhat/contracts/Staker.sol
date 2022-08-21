@@ -9,8 +9,8 @@ contract Staker {
 
     //Mappings
     // Solidity Mappingss
-    // In our smart contract, we'll need two mappings to help us store some data.
-    // In particular, we need something to keep track of:
+    // In our smart contract, I'll need two mappings to help us store some data.
+    // In particular, I need something to keep track of:
     //     how much ETH is deposited into the contract
     //     the time that the deposit happened
 
@@ -27,7 +27,7 @@ contract Staker {
     uint256 public currentBlock = 0;
 
     // Events
-    //  emit them in key parts of our contract to ensure that we maintain best programming practices.
+    //  emit them in key parts of our contract to ensure that I maintain best programming practices.
     event Stake(address indexed sender, uint256 amount);
     event Received(address, uint256);
     event Execute(address indexed sender, uint256 amount);
@@ -42,7 +42,7 @@ contract Staker {
 
     //   The modifiers withdrawalDeadlineReached(bool requireReached) & claimDeadlineReached(bool requireReached) both accept a boolean parameter and check to ensure that their respective deadlines are either true or false.
 
-    // The modifier notCompleted() operates in a similar fashion but is actually a little bit more complex in nature even though it contains fewer lines of code.
+    // The modifier notCompleted() operates in a similar fashion but is actually a little bit more complex in nature even though it contains feIr lines of code.
 
     // It actually calls on a function completed() from an external contract outside of Staker and checks to see if it's returning true or false to confirm if that flag has been switched.
     modifier withdrawalDeadlineReached(bool requireReached) {
@@ -73,8 +73,8 @@ contract Staker {
 
     // READ ONLY Time Functions
     // The conditional simply checks whether the current time is greater than or less than the deadlines dictated in the public variables section.
-    // If the current time is greater than the pre-arranged deadlines, we know that the deadline has passed and we return 0 to signify that a "state change" has occurred.
-    // Otherwise, we simply return the remaining time before the deadline is reached.
+    // If the current time is greater than the pre-arranged deadlines, I know that the deadline has passed and I return 0 to signify that a "state change" has occurred.
+    // Otherwise, I simply return the remaining time before the deadline is reached.
     /*
   READ-ONLY function to calculate the time remaining before the minimum staking period has passed
   */
@@ -105,5 +105,22 @@ contract Staker {
         exampleExternalContract = ExampleExternalContract(
             exampleExternalContractAddress
         );
+    }
+
+    // Depositing/Staking Function
+    // Stake function for a user to stake ETH in our contract
+    // use the modifiers created earlier by setting the params within withdrawalDeadlineReached() to be false and claimDeadlineReached() to be false since I don't want either deadline to have passed yet.
+    //The rest of the function is fairly standard in a typical "deposit" scenario where our balance mapping is updated to include the money sent in.
+
+    // I also set our deposit timestamp with the current time of the deposit so that I access that stored value for interest calculations later.
+    function stake()
+        public
+        payable
+        withdrawalDeadlineReached(false)
+        claimDeadlineReached(false)
+    {
+        balances[msg.sender] = balances[msg.sender] + msg.value;
+        depositTimestamps[msg.sender] = block.timestamp;
+        emit Stake(msg.sender, msg.value);
     }
 }
